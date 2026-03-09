@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Mechanic App</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDummyKey"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div class="dashboard-title">
+                <h1>👨‍💼 Admin Dashboard</h1>
+                <p>Central Location Management System</p>
+            </div>
+            <div class="dashboard-actions">
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <div id="alert-container"></div>
+
+            <!-- Statistics Section -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-mechanics">0</div>
+                    <div class="stat-label">Total Mechanics</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-users">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-pending">0</div>
+                    <div class="stat-label">Pending Requests</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-with-location">0</div>
+                    <div class="stat-label">Mechanics with Location</div>
+                </div>
+            </div>
+
+            <!-- Pending Location Requests Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">⏳ Pending Location Requests</h2>
+                    <button class="btn btn-info" onclick="loadPendingRequests()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div id="pending-requests-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Location Requests Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📋 All Location Requests</h2>
+                    <button class="btn btn-info" onclick="loadAllRequests()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div id="all-requests-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Mechanics Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔧 All Mechanics</h2>
+                    <button class="btn btn-info" onclick="loadMechanics()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div id="mechanics-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verification Modal -->
+    <div id="verificationModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>Verify Location Request</h2>
+                <button class="modal-close" onclick="closeModal('verificationModal')">&times;</button>
+            </div>
+            <div id="verification-content">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Reason Modal -->
+    <div id="rejectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Reject Request</h2>
+                <button class="modal-close" onclick="closeModal('rejectModal')">&times;</button>
+            </div>
+            <form id="rejectForm">
+                <input type="hidden" id="reject-request-id">
+                <div class="form-group">
+                    <label for="reject-reason">Reason for Rejection</label>
+                    <textarea 
+                        id="reject-reason" 
+                        class="form-control" 
+                        rows="4" 
+                        placeholder="Provide a reason for rejecting this request..."
+                        required
+                    ></textarea>
+                </div>
+                <div class="flex gap-1">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('rejectModal')">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentRequestId = null;
+        let verificationResults = null;
+        let expandedRows = new Set();
+
+        function toggleRequestDetails(requestId) {
+            const detailsRow = document.getElementById(`details-${requestId}`);
+            if (expandedRows.has(requestId)) {
+                detailsRow.style.display = 'none';
+                expandedRows.delete(requestId);
+            } else {
+                detailsRow.style.display = 'table-row';
+                expandedRows.add(requestId);
+            }
+        }
+
+        async function removeLocation(mechanicId) {
+            if (!confirm('Are you sure you want to remove this mechanic\'s location? They will be notified.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/mechanics/${mechanicId}/location`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Location removed and mechanic notified successfully!', 'success');
+                    loadAllRequests();
+                    loadMechanics();
+                } else {
+                    showAlert(data.error || 'Failed to remove location', 'error');
+                }
+            } catch (error) {
+                showAlert('Error removing location', 'error');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+            loadStats();
+            loadPendingRequests();
+            loadAllRequests();
+            loadMechanics();
+        });
+
+        async function checkSession() {
+            try {
+                const response = await fetch('/api/auth/check-session');
+                const data = await response.json();
+                if (!data.authenticated || data.role !== 'admin') {
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                window.location.href = '/';
+            }
+        }
+
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/admin/stats');
+                const stats = await response.json();
+
+                document.getElementById('stat-mechanics').textContent = stats.totalMechanics;
+                document.getElementById('stat-users').textContent = stats.totalUsers;
+                document.getElementById('stat-pending').textContent = stats.pendingRequests;
+                document.getElementById('stat-with-location').textContent = stats.mechanicsWithLocation;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadPendingRequests() {
+            const container = document.getElementById('pending-requests-container');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/api/admin/location-requests/pending');
+                const requests = await response.json();
+
+                if (requests.length === 0) {
+                    container.innerHTML = `
+                        <div class="alert alert-info">
+                            <strong>No pending requests.</strong> All caught up!
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Mechanic</th>
+                                    <th>Business Name</th>
+                                    <th>Address</th>
+                                    <th>Requested At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${requests.map(req => `
+                                    <tr>
+                                        <td>
+                                            <strong>${req.mechanicId.fullName}</strong><br>
+                                            <small style="color: var(--text-secondary);">${req.mechanicId.email}</small>
+                                        </td>
+                                        <td>${req.businessName || 'N/A'}</td>
+                                        <td>${req.address}</td>
+                                        <td>${new Date(req.requestedAt).toLocaleString()}</td>
+                                        <td>
+                                            <div class="flex gap-1">
+                                                <button class="btn btn-info" onclick="verifyRequest('${req._id}')">
+                                                    🔍 Verify
+                                                </button>
+                                                <button class="btn btn-danger" onclick="openRejectModal('${req._id}')">
+                                                    ✗ Reject
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p class="text-center">Error loading pending requests.</p>';
+            }
+        }
+
+        async function verifyRequest(requestId) {
+            const modal = document.getElementById('verificationModal');
+            const content = document.getElementById('verification-content');
+            modal.classList.add('active');
+            content.innerHTML = '<div class="spinner"></div>';
+            currentRequestId = requestId;
+
+            try {
+                const response = await fetch(`/api/admin/location-requests/${requestId}/verify`);
+                const data = await response.json();
+                verificationResults = data.results;
+
+                let html = `
+                    <div class="mb-2">
+                        <h3>Request Details</h3>
+                        <p><strong>Mechanic:</strong> ${data.request.mechanicId?.fullName || 'Unknown'}</p>
+                        <p><strong>Business Name:</strong> ${data.request.businessName || 'Not provided'}</p>
+                        <p><strong>Address:</strong> ${data.request.address}</p>
+                    </div>
+                `;
+
+                if (data.found && data.results.length > 0) {
+                    html += `
+                        <div class="mb-2">
+                            <h3>✅ Found ${data.results.length} Location(s)</h3>
+                            <p style="color: var(--success-color);">SerpAPI found matching locations. Select one to approve:</p>
+                        </div>
+                        <div class="grid grid-2" id="results-container">
+                            ${data.results.map((result, index) => `
+                                <div class="card" style="cursor: pointer; border: 2px solid var(--border-color);" onclick="selectLocation(${index})">
+                                    <h4 style="color: var(--primary-color);">${result.title}</h4>
+                                    <p><strong>Address:</strong> ${result.address}</p>
+                                    ${result.rating ? `<p><strong>Rating:</strong> ${result.rating} ⭐ (${result.reviews} reviews)</p>` : ''}
+                                    ${result.phone ? `<p><strong>Phone:</strong> ${result.phone}</p>` : ''}
+                                    ${result.website ? `<p><strong>Website:</strong> <a href="${result.website}" target="_blank">${result.website}</a></p>` : ''}
+                                    ${result.gps_coordinates ? `<p><strong>GPS:</strong> ${result.gps_coordinates.latitude}, ${result.gps_coordinates.longitude}</p>` : ''}
+                                    <button class="btn btn-success mt-1" onclick="approveWithLocation(${index}); event.stopPropagation();">
+                                        ✓ Approve This
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="alert alert-warning">
+                            <strong>⚠️ No locations found</strong> - SerpAPI couldn't find a match for this address/business name.
+                        </div>
+                        <p>You can still approve this request manually (location will be saved as provided by mechanic).</p>
+                    `;
+                }
+
+                html += `
+                    <div class="flex gap-1 mt-2">
+                        <button class="btn btn-primary" onclick="approveWithoutSelection()">
+                            ✓ Approve (Manual Entry)
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeModal('verificationModal')">
+                            Cancel
+                        </button>
+                    </div>
+                `;
+
+                content.innerHTML = html;
+            } catch (error) {
+                content.innerHTML = `<p class="text-center" style="color: var(--danger-color);">Error verifying location: ${error.message}</p>`;
+            }
+        }
+
+        function selectLocation(index) {
+            const resultCards = document.querySelectorAll('#results-container .card');
+            resultCards.forEach((card, i) => {
+                if (i === index) {
+                    card.style.borderColor = 'var(--success-color)';
+                    card.style.backgroundColor = 'rgba(16, 185, 129, 0.05)';
+                } else {
+                    card.style.borderColor = 'var(--border-color)';
+                    card.style.backgroundColor = 'transparent';
+                }
+            });
+        }
+
+        async function approveWithLocation(index) {
+            if (!verificationResults || !verificationResults[index]) {
+                showAlert('Invalid selection', 'error');
+                return;
+            }
+
+            const selectedLocation = verificationResults[index];
+            await approveRequest(currentRequestId, selectedLocation);
+        }
+
+        async function approveWithoutSelection() {
+            await approveRequest(currentRequestId, null);
+        }
+
+        async function approveRequest(requestId, selectedLocation) {
+            try {
+                const response = await fetch(`/api/admin/location-requests/${requestId}/approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ selectedLocation })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Location request approved successfully!', 'success');
+                    closeModal('verificationModal');
+                    loadStats();
+                    loadPendingRequests();
+                    loadAllRequests();
+                    loadMechanics();
+                } else {
+                    showAlert(data.error || 'Failed to approve request', 'error');
+                }
+            } catch (error) {
+                showAlert('Error approving request', 'error');
+            }
+        }
+
+        async function loadAllRequests() {
+            const container = document.getElementById('all-requests-container');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/api/admin/location-requests');
+                const requests = await response.json();
+
+                if (requests.length === 0) {
+                    container.innerHTML = '<p class="text-center">No location requests yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Mechanic</th>
+                                    <th>Status</th>
+                                    <th>Requested At</th>
+                                    <th>Processed At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${requests.map(req => `
+                                    <tr>
+                                        <td style="cursor: pointer;" onclick="toggleRequestDetails('${req._id}')">
+                                            <strong>${req.mechanicId.fullName}</strong><br>
+                                            <small style="color: var(--text-secondary);">${req.mechanicId.username}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-${req.status}">
+                                                ${req.status.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td>${new Date(req.requestedAt).toLocaleString()}</td>
+                                        <td>${req.processedAt ? new Date(req.processedAt).toLocaleString() : 'N/A'}</td>
+                                        <td>
+                                            ${req.status === 'approved' ? `
+                                                <button class="btn btn-danger" onclick="removeLocation('${req.mechanicId._id}')">
+                                                    🗑️ Remove Location
+                                                </button>
+                                            ` : ''}
+                                        </td>
+                                    </tr>
+                                    <tr id="details-${req._id}" style="display: none;">
+                                        <td colspan="5" style="padding: 20px; background: var(--light-bg);">
+                                            <div class="mb-2">
+                                                <p><strong>Business Name:</strong> ${req.businessName || 'Not provided'}</p>
+                                                <p><strong>Address:</strong> ${req.address}</p>
+                                                ${req.locationData ? `
+                                                    <p><strong>Location Data:</strong></p>
+                                                    ${req.locationData.title ? `<p>📋 ${req.locationData.title}</p>` : ''}
+                                                    ${req.locationData.rating ? `<p>⭐ Rating: ${req.locationData.rating} (${req.locationData.reviews} reviews)</p>` : ''}
+                                                    ${req.locationData.phone ? `<p>📞 ${req.locationData.phone}</p>` : ''}
+                                                    ${req.locationData.website ? `<p>🌐 <a href="${req.locationData.website}" target="_blank">${req.locationData.website}</a></p>` : ''}
+                                                ` : ''}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p class="text-center">Error loading requests.</p>';
+            }
+        }
+
+        async function loadMechanics() {
+            const container = document.getElementById('mechanics-container');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/api/admin/mechanics');
+                const mechanics = await response.json();
+
+                if (mechanics.length === 0) {
+                    container.innerHTML = '<p class="text-center">No mechanics found.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="grid grid-3">
+                        ${mechanics.map(mechanic => `
+                            <div class="card">
+                                <h3 style="color: var(--primary-color); margin-bottom: 10px;">${mechanic.fullName}</h3>
+                                <p style="color: var(--text-secondary); margin-bottom: 5px;">
+                                    <strong>Username:</strong> ${mechanic.username}
+                                </p>
+                                <p style="color: var(--text-secondary); margin-bottom: 5px;">
+                                    <strong>Email:</strong> ${mechanic.email}
+                                </p>
+                                ${mechanic.pendingRequests > 0 ? `
+                                    <span class="badge badge-pending">${mechanic.pendingRequests} Pending Request(s)</span>
+                                ` : ''}
+                                ${mechanic.location ? `
+                                    <div class="location-card mt-2">
+                                        <strong>📍 Current Location:</strong>
+                                        <p style="margin-top: 5px;">${mechanic.location.address}</p>
+                                        ${mechanic.location.businessName ? `<p><strong>Business:</strong> ${mechanic.location.businessName}</p>` : ''}
+                                        ${mechanic.location.locationData?.rating ? `<p><strong>Rating:</strong> ${mechanic.location.locationData.rating} ⭐</p>` : ''}
+                                    </div>
+                                ` : '<p style="color: var(--text-secondary); margin-top: 10px;">No location set</p>'}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p class="text-center">Error loading mechanics.</p>';
+            }
+        }
+
+        function openRejectModal(requestId) {
+            currentRequestId = requestId;
+            document.getElementById('reject-request-id').value = requestId;
+            document.getElementById('reject-reason').value = '';
+            document.getElementById('rejectModal').classList.add('active');
+        }
+
+        document.getElementById('rejectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const requestId = document.getElementById('reject-request-id').value;
+            const reason = document.getElementById('reject-reason').value;
+
+            try {
+                const response = await fetch(`/api/admin/location-requests/${requestId}/reject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Location request rejected.', 'success');
+                    closeModal('rejectModal');
+                    loadStats();
+                    loadPendingRequests();
+                    loadAllRequests();
+                } else {
+                    showAlert(data.error || 'Failed to reject request', 'error');
+                }
+            } catch (error) {
+                showAlert('Error rejecting request', 'error');
+            }
+        });
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/';
+            } catch (error) {
+                showAlert('Error logging out', 'error');
+            }
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

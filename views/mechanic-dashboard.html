@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mechanic Dashboard - Mechanic App</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div class="dashboard-title">
+                <h1>🔧 Mechanic Dashboard</h1>
+                <p>Welcome, <span id="mechanicName">Mechanic</span>!</p>
+            </div>
+            <div class="dashboard-actions">
+                <button class="btn btn-info" onclick="showProfileModal()">My Profile</button>
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <div id="alert-container"></div>
+
+            <!-- Current Location Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📍 My Location</h2>
+                    <button class="btn btn-primary" onclick="openLocationRequestModal()">Request Location Update</button>
+                </div>
+                <div class="card-body">
+                    <div id="current-location-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Requests Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📋 My Location Requests</h2>
+                    <button class="btn btn-info" onclick="loadLocationRequests()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div id="location-requests-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔔 Notifications</h2>
+                    <button class="btn btn-info" onclick="loadNotifications()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div id="notifications-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reviews Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">⭐ My Reviews</h2>
+                </div>
+                <div class="card-body">
+                    <div id="reviews-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>My Profile</h2>
+                <button class="modal-close" onclick="closeModal('profileModal')">&times;</button>
+            </div>
+            <div id="profile-content">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location Request Modal -->
+    <div id="locationRequestModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Request Location Update</h2>
+                <button class="modal-close" onclick="closeModal('locationRequestModal')">&times;</button>
+            </div>
+            <form id="locationRequestForm">
+                <div class="alert alert-info">
+                    <strong>Note:</strong> Your request will be reviewed by admin. Address is required, business name is optional but helps improve search results.
+                </div>
+                <div class="form-group">
+                    <label for="business-name">Business Name (Optional)</label>
+                    <input 
+                        type="text" 
+                        id="business-name" 
+                        class="form-control" 
+                        placeholder="e.g., Ali's Auto Repair"
+                    >
+                </div>
+                <div class="form-group">
+                    <label for="address">Address (Required)</label>
+                    <input 
+                        type="text" 
+                        id="address" 
+                        class="form-control" 
+                        placeholder="e.g., 123 Main St, City, Country"
+                        required
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Submit Request</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let isEditingProfile = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+            loadCurrentLocation();
+            loadLocationRequests();
+            loadReviews();
+            loadNotifications();
+        });
+
+        async function checkSession() {
+            try {
+                const response = await fetch('/api/auth/check-session');
+                const data = await response.json();
+                if (!data.authenticated || data.role !== 'mechanic') {
+                    window.location.href = '/';
+                } else {
+                    document.getElementById('mechanicName').textContent = data.username;
+                }
+            } catch (error) {
+                window.location.href = '/';
+            }
+        }
+
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        async function loadCurrentLocation() {
+            const container = document.getElementById('current-location-container');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/api/mechanic/location');
+                const location = await response.json();
+
+                if (!location) {
+                    container.innerHTML = `
+                        <div class="alert alert-info">
+                            <strong>No location set yet.</strong> Submit a location request to get started.
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="location-card">
+                        ${location.businessName ? `<p><strong>Business Name:</strong> ${location.businessName}</p>` : ''}
+                        <p><strong>Address:</strong> ${location.address}</p>
+                        ${location.locationData ? `
+                            <div class="mt-2">
+                                <p><strong>Location Details:</strong></p>
+                                ${location.locationData.title ? `<p>📋 ${location.locationData.title}</p>` : ''}
+                                ${location.locationData.rating ? `<p>⭐ Rating: ${location.locationData.rating} (${location.locationData.reviews} reviews)</p>` : ''}
+                                ${location.locationData.phone ? `<p>📞 ${location.locationData.phone}</p>` : ''}
+                                ${location.locationData.website ? `<p>🌐 <a href="${location.locationData.website}" target="_blank">${location.locationData.website}</a></p>` : ''}
+                                <button class="btn btn-info mt-1" onclick="showLocationMap('${location.address}', '${location.businessName || 'My Shop'}')">🗺️ View on Google Maps</button>
+                            </div>
+                        ` : ''}
+                        <p style="color: var(--text-secondary); margin-top: 10px;">
+                            <small>Last updated: ${new Date(location.updatedAt).toLocaleString()}</small>
+                        </p>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p>Error loading location.</p>';
+            }
+        }
+
+        async function loadLocationRequests() {
+            const container = document.getElementById('location-requests-container');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/api/mechanic/location-requests');
+                const requests = await response.json();
+
+                if (requests.length === 0) {
+                    container.innerHTML = '<p class="text-center">No location requests yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Business Name</th>
+                                    <th>Address</th>
+                                    <th>Status</th>
+                                    <th>Requested At</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${requests.map(req => `
+                                    <tr>
+                                        <td>${req.businessName || 'N/A'}</td>
+                                        <td>${req.address}</td>
+                                        <td>
+                                            <span class="badge badge-${req.status}">
+                                                ${req.status.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td>${new Date(req.requestedAt).toLocaleString()}</td>
+                                        <td>
+                                            ${req.status === 'rejected' && req.rejectionReason ?
+                                                `<small style="color: var(--danger-color);">Reason: ${req.rejectionReason}</small>` :
+                                                req.status === 'approved' ?
+                                                `<small style="color: var(--success-color);">✓ Approved</small>` :
+                                                `<small style="color: var(--warning-color);">⏳ Pending</small>`
+                                            }
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p class="text-center">Error loading requests.</p>';
+            }
+        }
+
+        async function loadReviews() {
+            const container = document.getElementById('reviews-container');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/api/mechanic/reviews');
+                const data = await response.json();
+
+                if (data.reviews.length === 0) {
+                    container.innerHTML = '<p class="text-center">No reviews yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="mb-2">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">${data.totalReviews}</div>
+                                <div class="stat-label">Total Reviews</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${data.averageRating} ⭐</div>
+                                <div class="stat-label">Average Rating</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-2">
+                        ${data.reviews.map(review => `
+                            <div class="card">
+                                <div class="flex-between mb-1">
+                                    <strong style="color: var(--primary-color);">${review.userId.fullName}</strong>
+                                    <span>${'⭐'.repeat(review.rating)}</span>
+                                </div>
+                                <p style="color: var(--text-secondary); margin-bottom: 10px;">${review.comment}</p>
+                                <small style="color: var(--text-secondary);">${new Date(review.createdAt).toLocaleDateString()}</small>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p class="text-center">Error loading reviews.</p>';
+            }
+        }
+
+        function openLocationRequestModal() {
+            document.getElementById('locationRequestModal').classList.add('active');
+        }
+
+        document.getElementById('locationRequestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const businessName = document.getElementById('business-name').value;
+            const address = document.getElementById('address').value;
+
+            try {
+                const response = await fetch('/api/mechanic/location-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ businessName, address })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert(data.message, 'success');
+                    closeModal('locationRequestModal');
+                    document.getElementById('locationRequestForm').reset();
+                    loadLocationRequests();
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error submitting request', 'error');
+            }
+        });
+
+        async function showProfileModal() {
+            const modal = document.getElementById('profileModal');
+            const content = document.getElementById('profile-content');
+            modal.classList.add('active');
+            content.innerHTML = '<div class="spinner"></div>';
+            isEditingProfile = false;
+
+            try {
+                const response = await fetch('/api/mechanic/profile');
+                const user = await response.json();
+                currentUser = user;
+
+                renderProfileView();
+            } catch (error) {
+                content.innerHTML = '<p>Error loading profile.</p>';
+            }
+        }
+
+        function renderProfileView() {
+            const content = document.getElementById('profile-content');
+
+            content.innerHTML = `
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="profile-username" class="form-control" value="${currentUser.username}" ${!isEditingProfile ? 'disabled' : ''}>
+                </div>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="profile-fullname" class="form-control" value="${currentUser.fullName}" ${!isEditingProfile ? 'disabled' : ''}>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="profile-email" class="form-control" value="${currentUser.email}" ${!isEditingProfile ? 'disabled' : ''}>
+                </div>
+                <div class="form-group">
+                    <label>Bio</label>
+                    <textarea id="profile-bio" class="form-control" rows="3" ${!isEditingProfile ? 'disabled' : ''}>${currentUser.profileData?.bio || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" id="profile-phone" class="form-control" value="${currentUser.profileData?.phone || ''}" ${!isEditingProfile ? 'disabled' : ''}>
+                </div>
+                <div class="flex gap-1">
+                    ${!isEditingProfile ? `
+                        <button class="btn btn-primary" onclick="toggleEditProfile()">Edit Profile</button>
+                    ` : `
+                        <button class="btn btn-success" onclick="saveProfile()">Save Changes</button>
+                        <button class="btn btn-secondary" onclick="cancelEditProfile()">Cancel</button>
+                    `}
+                </div>
+            `;
+        }
+
+        function toggleEditProfile() {
+            isEditingProfile = true;
+            renderProfileView();
+        }
+
+        function cancelEditProfile() {
+            isEditingProfile = false;
+            renderProfileView();
+        }
+
+        async function saveProfile() {
+            const username = document.getElementById('profile-username').value.trim();
+            const fullName = document.getElementById('profile-fullname').value.trim();
+            const email = document.getElementById('profile-email').value.trim();
+            const bio = document.getElementById('profile-bio').value.trim();
+            const phone = document.getElementById('profile-phone').value.trim();
+
+            if (!username || !fullName || !email) {
+                showAlert('Username, full name, and email are required', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/mechanic/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        fullName,
+                        email,
+                        profileData: { bio, phone }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Profile updated successfully!', 'success');
+                    currentUser = data.user;
+                    isEditingProfile = false;
+
+                    // Update the displayed username if changed
+                    document.getElementById('mechanicName').textContent = data.user.username;
+
+                    renderProfileView();
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error updating profile', 'error');
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/';
+            } catch (error) {
+                showAlert('Error logging out', 'error');
+            }
+        }
+
+        async function loadNotifications() {
+            const container = document.getElementById('notifications-container');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/api/mechanic/notifications');
+                const notifications = await response.json();
+
+                if (notifications.length === 0) {
+                    container.innerHTML = '<p class="text-center">No notifications.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="grid grid-2">
+                        ${notifications.map(notif => `
+                            <div class="card" style="border-left: 4px solid var(--warning-color);">
+                                <p style="color: var(--text-secondary); margin-bottom: 10px;">${notif.message}</p>
+                                <small style="color: var(--text-secondary);">${new Date(notif.createdAt).toLocaleString()}</small>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p class="text-center">Error loading notifications.</p>';
+            }
+        }
+
+        // Show location map
+        function showLocationMap(address, businessName) {
+            const encodedAddress = encodeURIComponent(address);
+            const mapUrl = `https://www.google.com/maps/search/${encodedAddress}`;
+            window.open(mapUrl, '_blank');
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

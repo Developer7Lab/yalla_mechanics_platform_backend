@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Mechanic App</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>🔧 Mechanic App</h1>
+                <p>Welcome back! Please login to continue</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        class="form-control" 
+                        placeholder="Enter your username"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        class="form-control" 
+                        placeholder="Enter your password"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="loginBtn">
+                    Login
+                </button>
+            </form>
+
+            <div class="mt-3" style="text-align: center;">
+                <p style="color: var(--text-secondary);">
+                    Don't have an account?
+                    <a href="/register" style="color: var(--primary-color); font-weight: 600;">Register here</a>
+                </p>
+            </div>
+
+            <div class="mt-3" style="padding: 20px; background: var(--light-bg); border-radius: 10px;">
+                <p style="font-weight: 600; margin-bottom: 10px; color: var(--text-primary);">Test Accounts:</p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">
+                    <strong>Normal Users:</strong> user1, user2, user3, user4, user5
+                </p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">
+                    <strong>Mechanics:</strong> mechanic1, mechanic2, mechanic3, mechanic4, mechanic5
+                </p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">
+                    <strong>Admin:</strong> admin
+                </p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                    <strong>Password for all:</strong> password123 (admin: admin123)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const alertContainer = document.getElementById('alert-container');
+
+        function showAlert(message, type = 'error') {
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Login successful! Redirecting...', 'success');
+
+                    // Redirect based on role
+                    setTimeout(() => {
+                        if (data.role === 'user') {
+                            window.location.href = '/user/dashboard';
+                        } else if (data.role === 'mechanic') {
+                            window.location.href = '/mechanic/dashboard';
+                        } else if (data.role === 'admin') {
+                            window.location.href = '/admin/dashboard';
+                        }
+                    }, 1000);
+                } else {
+                    showAlert(data.error || 'Login failed', 'error');
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Login';
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        });
+    </script>
+</body>
+</html>

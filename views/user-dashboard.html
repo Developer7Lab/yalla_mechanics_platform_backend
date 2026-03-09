@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - Mechanic App</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div class="dashboard-title">
+                <h1>👤 User Dashboard</h1>
+                <p>Welcome, <span id="userName">User</span>!</p>
+            </div>
+            <div class="dashboard-actions">
+                <button class="btn btn-info" onclick="showProfileModal()">My Profile</button>
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <div id="alert-container"></div>
+
+            <!-- Mechanics Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔧 Available Mechanics</h2>
+                    <button class="btn btn-primary" onclick="loadMechanics()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div id="mechanics-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Reviews Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">⭐ My Reviews</h2>
+                </div>
+                <div class="card-body">
+                    <div id="my-reviews-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>My Profile</h2>
+                <button class="modal-close" onclick="closeModal('profileModal')">&times;</button>
+            </div>
+            <div id="profile-content">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Modal -->
+    <div id="reviewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Write Review</h2>
+                <button class="modal-close" onclick="closeModal('reviewModal')">&times;</button>
+            </div>
+            <form id="reviewForm">
+                <input type="hidden" id="review-mechanic-id">
+                <div class="form-group">
+                    <label>Mechanic: <span id="review-mechanic-name"></span></label>
+                </div>
+                <div class="form-group">
+                    <label>Rating</label>
+                    <div class="rating" id="rating-stars">
+                        <span class="star" data-rating="1">★</span>
+                        <span class="star" data-rating="2">★</span>
+                        <span class="star" data-rating="3">★</span>
+                        <span class="star" data-rating="4">★</span>
+                        <span class="star" data-rating="5">★</span>
+                    </div>
+                    <input type="hidden" id="rating-value" value="5">
+                </div>
+                <div class="form-group">
+                    <label for="review-comment">Comment</label>
+                    <textarea 
+                        id="review-comment" 
+                        class="form-control" 
+                        rows="4" 
+                        placeholder="Share your experience..."
+                        required
+                    ></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Submit Review</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Mechanic Details Modal -->
+    <div id="mechanicModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="mechanic-modal-title">Mechanic Details</h2>
+                <button class="modal-close" onclick="closeModal('mechanicModal')">&times;</button>
+            </div>
+            <div id="mechanic-details-content">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let selectedRating = 5;
+        let isEditingProfile = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+            loadMechanics();
+            loadMyReviews();
+            setupRatingStars();
+        });
+
+        async function checkSession() {
+            try {
+                const response = await fetch('/api/auth/check-session');
+                const data = await response.json();
+                if (!data.authenticated || data.role !== 'user') {
+                    window.location.href = '/';
+                } else {
+                    document.getElementById('userName').textContent = data.username;
+                }
+            } catch (error) {
+                window.location.href = '/';
+            }
+        }
+
+        function showAlert(message, type = 'error') {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `
+                <div class="alert alert-${type}">
+                    ${message}
+                </div>
+            `;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        async function loadMechanics() {
+            const container = document.getElementById('mechanics-container');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/api/user/mechanics');
+                const mechanics = await response.json();
+
+                if (mechanics.length === 0) {
+                    container.innerHTML = '<p class="text-center">No mechanics found.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="grid grid-2">
+                        ${mechanics.map(mechanic => `
+                            <div class="card">
+                                <h3 style="color: var(--primary-color); margin-bottom: 10px;">${mechanic.fullName}</h3>
+                                <p style="color: var(--text-secondary); margin-bottom: 15px;">${mechanic.profileData?.bio || 'No bio available'}</p>
+                                ${mechanic.location ? `
+                                    <div class="location-card">
+                                        <strong>📍 Location:</strong>
+                                        <p style="margin-top: 5px;">${mechanic.location.address}</p>
+                                        ${mechanic.location.businessName ? `<p><strong>Business:</strong> ${mechanic.location.businessName}</p>` : ''}
+                                        ${mechanic.location.locationData?.rating ? `<p><strong>Rating:</strong> ${mechanic.location.locationData.rating} ⭐ (${mechanic.location.locationData.reviews} reviews)</p>` : ''}
+                                        ${mechanic.location.locationData?.phone ? `<p><strong>Phone:</strong> ${mechanic.location.locationData.phone}</p>` : ''}
+                                        ${mechanic.location.locationData?.website ? `<p><strong>Website:</strong> <a href="${mechanic.location.locationData.website}" target="_blank">${mechanic.location.locationData.website}</a></p>` : ''}
+                                        <button class="btn btn-info mt-1" onclick="showLocationMap('${mechanic.location.address}', '${mechanic.location.businessName || mechanic.fullName}')">🗺️ View Map</button>
+                                    </div>
+                                ` : '<p style="color: var(--text-secondary);">No location set</p>'}
+                                <div class="flex gap-1 mt-2">
+                                    <button class="btn btn-info" onclick="viewMechanicDetails('${mechanic._id}')">View Details</button>
+                                    <button class="btn btn-primary" onclick="openReviewModal('${mechanic._id}', '${mechanic.fullName}')">Write Review</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p class="text-center">Error loading mechanics.</p>';
+            }
+        }
+
+        async function viewMechanicDetails(mechanicId) {
+            const modal = document.getElementById('mechanicModal');
+            const content = document.getElementById('mechanic-details-content');
+            modal.classList.add('active');
+            content.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch(`/api/user/mechanics/${mechanicId}/reviews`);
+                const reviews = await response.json();
+
+                const avgRating = reviews.length > 0
+                    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+                    : 'N/A';
+
+                content.innerHTML = `
+                    <div class="mb-2">
+                        <h3>Reviews (${reviews.length})</h3>
+                        <p><strong>Average Rating:</strong> ${avgRating} ⭐</p>
+                    </div>
+                    ${reviews.length > 0 ? `
+                        <div style="max-height: 400px; overflow-y: auto;">
+                            ${reviews.map(review => `
+                                <div class="card" style="margin-bottom: 15px;">
+                                    <div class="flex-between mb-1">
+                                        <strong>${review.userId.fullName}</strong>
+                                        <span>${'⭐'.repeat(review.rating)}</span>
+                                    </div>
+                                    <p style="color: var(--text-secondary);">${review.comment}</p>
+                                    <small style="color: var(--text-secondary);">${new Date(review.createdAt).toLocaleDateString()}</small>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<p>No reviews yet.</p>'}
+                `;
+            } catch (error) {
+                content.innerHTML = '<p>Error loading reviews.</p>';
+            }
+        }
+
+        async function loadMyReviews() {
+            const container = document.getElementById('my-reviews-container');
+            container.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const response = await fetch('/api/user/my-reviews');
+                const reviews = await response.json();
+
+                if (reviews.length === 0) {
+                    container.innerHTML = '<p class="text-center">You haven\'t written any reviews yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="grid grid-2">
+                        ${reviews.map(review => `
+                            <div class="card">
+                                <div class="flex-between mb-1">
+                                    <strong style="color: var(--primary-color);">${review.mechanicId.fullName}</strong>
+                                    <span>${'⭐'.repeat(review.rating)}</span>
+                                </div>
+                                <p style="color: var(--text-secondary); margin-bottom: 10px;">${review.comment}</p>
+                                <small style="color: var(--text-secondary);">${new Date(review.createdAt).toLocaleDateString()}</small>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<p class="text-center">Error loading reviews.</p>';
+            }
+        }
+
+        function setupRatingStars() {
+            const stars = document.querySelectorAll('#rating-stars .star');
+            stars.forEach(star => {
+                star.addEventListener('click', () => {
+                    selectedRating = parseInt(star.dataset.rating);
+                    document.getElementById('rating-value').value = selectedRating;
+                    updateStars();
+                });
+            });
+            updateStars();
+        }
+
+        function updateStars() {
+            const stars = document.querySelectorAll('#rating-stars .star');
+            stars.forEach((star, index) => {
+                if (index < selectedRating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+
+        function openReviewModal(mechanicId, mechanicName) {
+            document.getElementById('review-mechanic-id').value = mechanicId;
+            document.getElementById('review-mechanic-name').textContent = mechanicName;
+            document.getElementById('review-comment').value = '';
+            selectedRating = 5;
+            updateStars();
+            document.getElementById('reviewModal').classList.add('active');
+        }
+
+        document.getElementById('reviewForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const mechanicId = document.getElementById('review-mechanic-id').value;
+            const rating = selectedRating;
+            const comment = document.getElementById('review-comment').value;
+
+            try {
+                const response = await fetch('/api/user/reviews', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mechanicId, rating, comment })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert(data.message, 'success');
+                    closeModal('reviewModal');
+                    loadMyReviews();
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error submitting review', 'error');
+            }
+        });
+
+        async function showProfileModal() {
+            const modal = document.getElementById('profileModal');
+            const content = document.getElementById('profile-content');
+            modal.classList.add('active');
+            content.innerHTML = '<div class="spinner"></div>';
+            isEditingProfile = false;
+
+            try {
+                const response = await fetch('/api/user/profile');
+                const user = await response.json();
+                currentUser = user;
+
+                renderProfileView();
+            } catch (error) {
+                content.innerHTML = '<p>Error loading profile.</p>';
+            }
+        }
+
+        function renderProfileView() {
+            const content = document.getElementById('profile-content');
+
+            content.innerHTML = `
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="profile-username" class="form-control" value="${currentUser.username}" ${!isEditingProfile ? 'disabled' : ''}>
+                </div>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="profile-fullname" class="form-control" value="${currentUser.fullName}" ${!isEditingProfile ? 'disabled' : ''}>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="profile-email" class="form-control" value="${currentUser.email}" ${!isEditingProfile ? 'disabled' : ''}>
+                </div>
+                <div class="form-group">
+                    <label>Bio</label>
+                    <textarea id="profile-bio" class="form-control" rows="3" ${!isEditingProfile ? 'disabled' : ''}>${currentUser.profileData?.bio || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" id="profile-phone" class="form-control" value="${currentUser.profileData?.phone || ''}" ${!isEditingProfile ? 'disabled' : ''}>
+                </div>
+                <div class="flex gap-1">
+                    ${!isEditingProfile ? `
+                        <button class="btn btn-primary" onclick="toggleEditProfile()">Edit Profile</button>
+                    ` : `
+                        <button class="btn btn-success" onclick="saveProfile()">Save Changes</button>
+                        <button class="btn btn-secondary" onclick="cancelEditProfile()">Cancel</button>
+                    `}
+                </div>
+            `;
+        }
+
+        function toggleEditProfile() {
+            isEditingProfile = true;
+            renderProfileView();
+        }
+
+        function cancelEditProfile() {
+            isEditingProfile = false;
+            renderProfileView();
+        }
+
+        async function saveProfile() {
+            const username = document.getElementById('profile-username').value.trim();
+            const fullName = document.getElementById('profile-fullname').value.trim();
+            const email = document.getElementById('profile-email').value.trim();
+            const bio = document.getElementById('profile-bio').value.trim();
+            const phone = document.getElementById('profile-phone').value.trim();
+
+            if (!username || !fullName || !email) {
+                showAlert('Username, full name, and email are required', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        fullName,
+                        email,
+                        profileData: { bio, phone }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Profile updated successfully!', 'success');
+                    currentUser = data.user;
+                    isEditingProfile = false;
+
+                    // Update the displayed username if changed
+                    document.getElementById('userName').textContent = data.user.username;
+
+                    renderProfileView();
+                } else {
+                    showAlert(data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error updating profile', 'error');
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/';
+            } catch (error) {
+                showAlert('Error logging out', 'error');
+            }
+        }
+
+        // Show location map
+        function showLocationMap(address, businessName) {
+            const encodedAddress = encodeURIComponent(address);
+            const mapUrl = `https://www.google.com/maps/search/${encodedAddress}`;
+            window.open(mapUrl, '_blank');
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
