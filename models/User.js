@@ -25,7 +25,9 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    lowercase: true,
+    trim: true
   },
   profileData: {
     bio: String,
@@ -33,34 +35,29 @@ const userSchema = new mongoose.Schema({
     avatar: String,
     customFields: mongoose.Schema.Types.Mixed
   },
-  notifications: [{
-    message: String,
-    type: { type: String, default: 'info' },
-    read: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now }
-  }],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  notifications: [
+    {
+      message: String,
+      type: { type: String, default: 'info' },
+      read: { type: Boolean, default: false },
+      createdAt: { type: Date, default: Date.now }
+    }
+  ]
+}, {
+  timestamps: true
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+/// 🔐 Hash password before saving (FIXED)
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Method to compare password
-userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+/// 🔑 Compare password
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);

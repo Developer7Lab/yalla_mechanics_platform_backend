@@ -4,7 +4,7 @@ const axios = require('axios');
  * Search for location using SerpAPI Google Maps API
  * @param {string} query - Search query (address + optional business name)
  * @param {string} apiKey - SerpAPI key
- * @returns {Promise<Array>} Array of potential location results
+ * @returns {Promise<Object>} Location data from SerpAPI
  */
 const searchLocation = async (query, apiKey) => {
   try {
@@ -17,31 +17,10 @@ const searchLocation = async (query, apiKey) => {
       }
     });
 
-    const results = [];
-
-    // Check for local results (multiple matches)
     if (response.data && response.data.local_results && response.data.local_results.length > 0) {
-      response.data.local_results.forEach(result => {
-        results.push({
-          title: result.title || '',
-          address: result.address || '',
-          rating: result.rating || null,
-          reviews: result.reviews || 0,
-          type: result.type || '',
-          phone: result.phone || '',
-          website: result.website || '',
-          thumbnail: result.thumbnail || '',
-          gps_coordinates: result.gps_coordinates || null,
-          place_id: result.place_id || '',
-          data_id: result.data_id || '',
-          links: result.links || null
-        });
-      });
-    } 
-    // Check for a single direct match (place results)
-    else if (response.data && response.data.place_results) {
-      const result = response.data.place_results;
-      results.push({
+      // Return the first result
+      const result = response.data.local_results[0];
+      return {
         title: result.title || '',
         address: result.address || '',
         rating: result.rating || null,
@@ -50,14 +29,31 @@ const searchLocation = async (query, apiKey) => {
         phone: result.phone || '',
         website: result.website || '',
         thumbnail: result.thumbnail || '',
+        position: result.position || 1,
         gps_coordinates: result.gps_coordinates || null,
         place_id: result.place_id || '',
-        data_id: result.data_id || '',
-        links: result.links || null
-      });
+        data_id: result.data_id || ''
+      };
+    } else if (response.data && response.data.search_metadata) {
+      // No results found, but search was successful
+      return {
+        title: query,
+        address: query,
+        rating: null,
+        reviews: 0,
+        type: 'Address',
+        phone: '',
+        website: '',
+        thumbnail: '',
+        position: 1,
+        gps_coordinates: null,
+        place_id: '',
+        data_id: '',
+        note: 'Location searched but no detailed results found'
+      };
     }
 
-    return results;
+    throw new Error('No location data found');
   } catch (error) {
     console.error('SerpAPI Error:', error.message);
     throw new Error(`Failed to fetch location data: ${error.message}`);
