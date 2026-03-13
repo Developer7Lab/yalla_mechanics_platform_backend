@@ -7,20 +7,31 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+// تم تعديل البورت الافتراضي إلى 3001 لأن 3000 محجوز للفرونت-إيند
+const PORT = process.env.PORT || 3001; 
 
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mechanic-app';
+// ==========================================
+// 1. إعدادات الـ CORS (يجب أن تكون في الأعلى دائماً)
+// ==========================================
+app.use(cors({
+  origin: 'http://localhost:3000', // السماح للفرونت-إيند بالوصول
+  credentials: true, // السماح بإرسال الكوكيز أو التوكنز
+}));
 
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('✓ Connected to MongoDB'))
-  .catch(err => {
-    console.error('✗ MongoDB connection error:', err);
-    process.exit(1);
-  });
+// ==========================================
+// 2. إعدادات الحماية والـ Middleware الأخرى
+// ==========================================
+// تم تعديل Helmet ليسمح بالـ Cross-Origin
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
-// Security Middleware
-app.use(helmet()); // Set security headers
+// Body parser middleware (يفضل وضعه هنا ليكون متاحاً لباقي الطلبات)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Sanitize data against NoSQL injection
+app.use(mongoSanitize());
 
 // Rate limiting
 const limiter = rateLimit({
@@ -36,21 +47,21 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
-// CORS configuration
-app.use(cors({
-  origin: '*',
-  methods: ['GET','POST','PUT','DELETE'],
-  allowedHeaders: ['Content-Type','Authorization']
-}));
+// ==========================================
+// 3. الاتصال بقاعدة البيانات
+// ==========================================
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mechanic-app';
 
-// Body parser middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('✓ Connected to MongoDB'))
+  .catch(err => {
+    console.error('✗ MongoDB connection error:', err);
+    process.exit(1);
+  });
 
-// Sanitize data against NoSQL injection
-app.use(mongoSanitize());
-
-// Routes
+// ==========================================
+// 4. المسارات (Routes)
+// ==========================================
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const mechanicRoutes = require('./routes/mechanics');
@@ -80,7 +91,9 @@ app.use((req, res) => {
   });
 });
 
-// Global error handling middleware
+// ==========================================
+// 5. معالجة الأخطاء (Error Handling)
+// ==========================================
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
 
@@ -123,6 +136,9 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ==========================================
+// 6. تشغيل وإغلاق السيرفر
+// ==========================================
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Closing HTTP server...');
@@ -145,7 +161,7 @@ const server = app.listen(PORT, () => {
   ➜ Server:      http://localhost:${PORT}
   ➜ Environment: ${process.env.NODE_ENV || 'development'}
   ➜ Database:    ${MONGODB_URI.includes('localhost') ? 'Local MongoDB' : 'Cloud MongoDB'}
-  ➜ Security:    ✓ Helmet, Rate Limiting, JWT
+  ➜ Security:    ✓ CORS, Helmet, Rate Limiting, JWT
 
   📚 API Documentation:
   ➜ Health:      GET  /api/health
