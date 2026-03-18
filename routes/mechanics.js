@@ -1,36 +1,56 @@
 const express = require('express');
-const router = express.Router();
-const { protect } = require('../middleware/auth');
-const mechanicController = require('../controllers/mechanicController');
+const router  = express.Router();
+const { protect }         = require('../middleware/auth');
+const mechanicController  = require('../controllers/mechanicController');
 const breakdownController = require('../controllers/breakdownController');
+const proposalController  = require('../controllers/proposalController');
 
-// All routes require authentication and 'mechanic' role
+// All routes require authentication + 'mechanic' role
 router.use(protect('mechanic'));
 
-// @route   GET /api/mechanics/profile
+// ── Profile ───────────────────────────────────────────────────────────────────
+// GET  /api/mechanics/profile
 router.get('/profile', mechanicController.getProfile);
-
-// @route   PUT /api/mechanics/profile
+// PUT  /api/mechanics/profile
 router.put('/profile', mechanicController.updateProfile);
 
-// @route   GET /api/mechanics/location
+// ── Location ──────────────────────────────────────────────────────────────────
+// GET  /api/mechanics/location
 router.get('/location', mechanicController.getLocation);
-
-// @route   POST /api/mechanics/location-requests
+// POST /api/mechanics/location-requests
 router.post('/location-requests', mechanicController.createLocationRequest);
-
-// @route   GET /api/mechanics/location-requests
+// GET  /api/mechanics/location-requests
 router.get('/location-requests', mechanicController.getLocationRequests);
 
-// @route   GET /api/mechanics/notifications
+// ── Notifications ─────────────────────────────────────────────────────────────
+// GET  /api/mechanics/notifications
 router.get('/notifications', mechanicController.getNotifications);
-
-// @route   POST /api/mechanics/notifications/read
+// POST /api/mechanics/notifications/read
 router.post('/notifications/read', mechanicController.markNotificationsRead);
 
-// @route   GET /api/mechanics/reviews
+// ── Reviews ───────────────────────────────────────────────────────────────────
+// GET  /api/mechanics/reviews
 router.get('/reviews', mechanicController.getReviews);
 
+// ── Breakdowns ────────────────────────────────────────────────────────────────
+// GET  /api/mechanics/all-breakdowns
+//      يرجع:
+//        - كل الـ pending (للجميع)
+//        - inProgress / resolved (للميكانيكي المُعيَّن فقط)
+//        + حقل myProposal لكل عطل pending (هل قدّم اقتراحاً مسبقاً؟)
 router.get('/all-breakdowns', breakdownController.getAllBreakdowns);
+
+// ── Proposals (mechanic side) ─────────────────────────────────────────────────
+// POST   /api/mechanics/breakdowns/:breakdownId/proposals
+//        الميكانيكي يقدم اقتراح
+router.post('/breakdowns/:breakdownId/proposals', proposalController.submitProposal);
+
+// GET    /api/mechanics/my-proposals?status=pending|accepted|rejected|withdrawn
+//        الميكانيكي يشوف اقتراحاته
+router.get('/my-proposals', proposalController.getMyProposals);
+
+// DELETE /api/mechanics/proposals/:proposalId
+//        الميكانيكي يسحب اقتراحه
+router.delete('/proposals/:proposalId', proposalController.withdrawProposal);
 
 module.exports = router;
