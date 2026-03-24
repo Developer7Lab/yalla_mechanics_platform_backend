@@ -1,14 +1,10 @@
 const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwtUtils');
 
-// @desc    Register new user
-// @route   POST /api/auth/register
-// @access  Public
 exports.register = async (req, res) => {
   try {
     const { username, password, role, fullName, email, profileData } = req.body;
 
-    // Validation
     if (!username || !password || !role || !fullName || !email) {
       return res.status(400).json({
         success: false,
@@ -16,7 +12,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Validate password strength
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
@@ -24,7 +19,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Validate role
     if (!['user', 'mechanic'].includes(role)) {
       return res.status(400).json({
         success: false,
@@ -32,7 +26,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Check if username already exists
     const existingUsername = await User.findOne({ username: username.toLowerCase() });
     if (existingUsername) {
       return res.status(400).json({
@@ -41,7 +34,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Check if email already exists
     const existingEmail = await User.findOne({ email: email.toLowerCase() });
     if (existingEmail) {
       return res.status(400).json({
@@ -50,7 +42,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Create new user
     const newUser = new User({
       username: username.toLowerCase(),
       password,
@@ -62,7 +53,6 @@ exports.register = async (req, res) => {
 
     await newUser.save();
 
-    // Generate tokens
     const accessToken = generateAccessToken({
       userId: newUser._id,
       username: newUser.username,
@@ -97,9 +87,6 @@ exports.register = async (req, res) => {
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -111,7 +98,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Find user and include password for comparison
     const user = await User.findOne({ username: username.toLowerCase() });
     if (!user) {
       return res.status(401).json({
@@ -120,7 +106,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({
@@ -129,7 +114,6 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Generate tokens
     const accessToken = generateAccessToken({
       userId: user._id,
       username: user.username,
@@ -164,9 +148,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// @desc    Refresh access token
-// @route   POST /api/auth/refresh
-// @access  Public
 exports.refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -178,10 +159,8 @@ exports.refreshToken = async (req, res) => {
       });
     }
 
-    // Verify refresh token
     const decoded = verifyRefreshToken(refreshToken);
 
-    // Check if user still exists
     const user = await User.findById(decoded.userId);
     if (!user) {
       return res.status(401).json({
@@ -190,7 +169,6 @@ exports.refreshToken = async (req, res) => {
       });
     }
 
-    // Generate new access token
     const newAccessToken = generateAccessToken({
       userId: user._id,
       username: user.username,
@@ -213,9 +191,6 @@ exports.refreshToken = async (req, res) => {
   }
 };
 
-// @desc    Get current user
-// @route   GET /api/auth/me
-// @access  Private
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
@@ -240,12 +215,7 @@ exports.getMe = async (req, res) => {
   }
 };
 
-// @desc    Logout user (client-side token removal)
-// @route   POST /api/auth/logout
-// @access  Private
 exports.logout = (req, res) => {
-  // With JWT, logout is handled client-side by removing the token
-  // This endpoint exists for consistency and can be extended for token blacklisting
   res.json({
     success: true,
     message: 'Logged out successfully. Please remove the token from client.'
