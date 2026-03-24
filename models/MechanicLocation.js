@@ -27,7 +27,6 @@ const mechanicLocationSchema = new mongoose.Schema({
   }
 });
 
-// Index for faster queries
 mechanicLocationSchema.index({ mechanicId: 1 });
 
 module.exports = mongoose.model('MechanicLocation', mechanicLocationSchema);
