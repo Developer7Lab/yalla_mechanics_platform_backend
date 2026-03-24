@@ -28,7 +28,6 @@ const reviewSchema = new mongoose.Schema({
   }
 });
 
-// Index for faster queries
 reviewSchema.index({ mechanicId: 1, createdAt: -1 });
 reviewSchema.index({ userId: 1 });
 
