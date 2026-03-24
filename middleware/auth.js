@@ -1,12 +1,8 @@
 const { verifyAccessToken } = require('../utils/jwtUtils');
 const User = require('../models/User');
 
-/**
- * Middleware to authenticate JWT token
- */
 exports.authenticate = async (req, res, next) => {
   try {
-    // Get token from header
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -16,12 +12,10 @@ exports.authenticate = async (req, res, next) => {
       });
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    const token = authHeader.substring(7);
 
-    // Verify token
     const decoded = verifyAccessToken(token);
 
-    // Check if user still exists
     const user = await User.findById(decoded.userId).select('-password');
     
     if (!user) {
@@ -31,7 +25,6 @@ exports.authenticate = async (req, res, next) => {
       });
     }
 
-    // Attach user to request object
     req.user = {
       userId: decoded.userId,
       username: decoded.username,
@@ -47,10 +40,6 @@ exports.authenticate = async (req, res, next) => {
   }
 };
 
-/**
- * Middleware to authorize specific roles
- * @param  {...String} roles - Allowed roles
- */
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -71,10 +60,6 @@ exports.authorize = (...roles) => {
   };
 };
 
-/**
- * Combined middleware for authentication and role authorization
- * @param  {...String} roles - Allowed roles
- */
 exports.protect = (...roles) => {
   return [
     exports.authenticate,
