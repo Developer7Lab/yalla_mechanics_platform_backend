@@ -44,7 +44,6 @@ const locationRequestSchema = new mongoose.Schema({
   }
 });
 
-// Index for faster queries
 locationRequestSchema.index({ mechanicId: 1, requestedAt: -1 });
 locationRequestSchema.index({ status: 1 });
 
