@@ -4,7 +4,7 @@ const multer  = require('multer');
 const path    = require('path');
 const { protect }       = require('../middleware/auth');
 const userController    = require('../controllers/userController');
-const proposalController = require('../controllers/proposalController');
+const proposalController = require('../controllers/proposalcontroller');
 
 
 const storage = multer.diskStorage({
