@@ -9,7 +9,7 @@ const { searchLocation } = require('../utils/serpapi');
 // @access  Private (Admin)
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.session.userId).select('-password');
+const user = await User.findById(req.user.id).select('-password');
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -41,25 +41,23 @@ exports.updateProfile = async (req, res) => {
     if (email) updateData.email = email;
     if (profileData) updateData.profileData = profileData;
 
-    if (username && username !== req.session.username) {
-      const existingUser = await User.findOne({
-        username: username.toLowerCase(),
-        _id: { $ne: req.session.userId }
-      });
+if (username && username !== req.user.username) {
+  const existingUser = await User.findOne({
+    username: username.toLowerCase(),
+    _id: { $ne: req.user.id }
+  });
 
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          error: 'Username already taken'
-        });
-      }
+  if (existingUser) {
+    return res.status(400).json({
+      success: false,
+      error: 'Username already taken'
+    });
+  }
 
-      updateData.username = username.toLowerCase();
-      req.session.username = username.toLowerCase();
-    }
-
+  updateData.username = username.toLowerCase();
+}
     const user = await User.findByIdAndUpdate(
-      req.session.userId,
+      req.user.id,
       updateData,
       { new: true }
     ).select('-password');
@@ -213,7 +211,7 @@ exports.approveLocationRequest = async (req, res) => {
     request.status = 'approved';
     request.locationData = finalLocationData;
     request.processedAt = new Date();
-    request.processedBy = req.session.userId;
+    request.processedBy = req.user.id;
     await request.save();
 
     res.json({
@@ -259,7 +257,7 @@ exports.rejectLocationRequest = async (req, res) => {
     request.status = 'rejected';
     request.rejectionReason = reason || 'No reason provided';
     request.processedAt = new Date();
-    request.processedBy = req.session.userId;
+    request.processedBy = req.user.id;
     await request.save();
 
     res.json({
@@ -373,7 +371,7 @@ exports.deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    if (userId === req.session.userId.toString()) {
+    if (userId === req.user.id) {
       return res.status(400).json({
         success: false,
         error: 'You cannot delete your own account'
@@ -430,7 +428,7 @@ exports.deleteMechanic = async (req, res) => {
   try {
     const { mechanicId } = req.params;
 
-    if (mechanicId === req.session.userId.toString()) {
+    if (mechanicId === req.user.id) {
       return res.status(400).json({
         success: false,
         error: 'You cannot delete your own account'
