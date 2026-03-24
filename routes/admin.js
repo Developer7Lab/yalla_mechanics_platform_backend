@@ -6,35 +6,27 @@ const Breakdown = require('../models/Breakdown');
 const path = require('path');
 const fs = require('fs');
 
-// All routes require authentication and 'admin' role
 router.use(protect('admin'));
 
-// Profile routes
 router.get('/profile', adminController.getProfile);
 router.put('/profile', adminController.updateProfile);
 
-// Location request routes
 router.get('/location-requests/pending', adminController.getPendingLocationRequests);
 router.get('/location-requests', adminController.getAllLocationRequests);
 router.get('/location-requests/:requestId/verify', adminController.verifyLocationRequest);
 router.post('/location-requests/:requestId/approve', adminController.approveLocationRequest);
 router.post('/location-requests/:requestId/reject', adminController.rejectLocationRequest);
 
-// Mechanic management routes
 router.get('/mechanics', adminController.getAllMechanics);
 router.delete('/mechanics/:mechanicId/location', adminController.removeMechanicLocation);
 router.delete('/mechanics/:mechanicId', adminController.deleteMechanic);
 
-// User management routes
 router.get('/users', adminController.getAllUsers);
 router.delete('/users/:userId', adminController.deleteUser);
 
-// Statistics route
 router.get('/stats', adminController.getStats);
 
-// ── Breakdown routes ─────────────────────────────────────────────────
 
-// GET /api/admin/breakdowns  — كل المنشورات مع فلترة بالحالة
 router.get('/breakdowns', async (req, res) => {
   try {
     const { status, page = 1, limit = 30 } = req.query;
@@ -68,7 +60,6 @@ router.get('/breakdowns', async (req, res) => {
   }
 });
 
-// PATCH /api/admin/breakdowns/:id/status  — تغيير حالة المنشور
 router.patch('/breakdowns/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
@@ -95,7 +86,6 @@ router.patch('/breakdowns/:id/status', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/breakdowns/:id  — حذف أي منشور
 router.delete('/breakdowns/:id', async (req, res) => {
   try {
     const breakdown = await Breakdown.findByIdAndDelete(req.params.id);
@@ -104,7 +94,6 @@ router.delete('/breakdowns/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Breakdown not found' });
     }
 
-    // حذف الصور المحلية إذا وُجدت
     breakdown.photos?.forEach(photo => {
       const filePath = path.join(__dirname, '..', 'public', photo.url);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);

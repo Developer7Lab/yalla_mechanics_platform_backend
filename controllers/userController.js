@@ -3,15 +3,11 @@ const Review = require('../models/Review');
 const MechanicLocation = require('../models/MechanicLocation');
 const breakdownController = require('./breakdownController');
 
-// ─── Re-export breakdown handlers so userRouter can use them ──────────────────
 exports.createBreakdown      = breakdownController.createBreakdown;
 exports.getMyBreakdowns      = breakdownController.getMyBreakdowns;
 exports.updateBreakdownStatus = breakdownController.updateBreakdownStatus;
 exports.deleteBreakdown      = breakdownController.deleteBreakdown;
 
-// @desc    Get user profile
-// @route   GET /api/users/profile
-// @access  Private (User)
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
@@ -25,9 +21,6 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// @desc    Update user profile
-// @route   PUT /api/users/profile
-// @access  Private (User)
 exports.updateProfile = async (req, res) => {
   try {
     const { username, fullName, email, profileData } = req.body;
@@ -61,9 +54,6 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// @desc    Get all mechanics with locations
-// @route   GET /api/users/mechanics
-// @access  Private (User)
 exports.getMechanics = async (req, res) => {
   try {
     const mechanics = await User.find({ role: 'mechanic' }).select('-password');
@@ -82,9 +72,6 @@ exports.getMechanics = async (req, res) => {
   }
 };
 
-// @desc    Get reviews for a specific mechanic
-// @route   GET /api/users/mechanics/:mechanicId/reviews
-// @access  Private (User)
 exports.getMechanicReviews = async (req, res) => {
   try {
     const reviews = await Review.find({ mechanicId: req.params.mechanicId })
@@ -98,9 +85,6 @@ exports.getMechanicReviews = async (req, res) => {
   }
 };
 
-// @desc    Submit a review for a mechanic
-// @route   POST /api/users/reviews
-// @access  Private (User)
 exports.createReview = async (req, res) => {
   try {
     const { mechanicId, rating, comment } = req.body;
@@ -143,9 +127,6 @@ exports.createReview = async (req, res) => {
   }
 };
 
-// @desc    Get user's own reviews
-// @route   GET /api/users/my-reviews
-// @access  Private (User)
 exports.getMyReviews = async (req, res) => {
   try {
     const reviews = await Review.find({ userId: req.user.userId })

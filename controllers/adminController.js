@@ -4,9 +4,6 @@ const MechanicLocation = require('../models/MechanicLocation');
 const Review = require('../models/Review');
 const { searchLocation } = require('../utils/serpapi');
 
-// @desc    Get admin profile
-// @route   GET /api/admin/profile
-// @access  Private (Admin)
 exports.getProfile = async (req, res) => {
   try {
 const user = await User.findById(req.user.id).select('-password');
@@ -29,9 +26,6 @@ const user = await User.findById(req.user.id).select('-password');
   }
 };
 
-// @desc    Update admin profile
-// @route   PUT /api/admin/profile
-// @access  Private (Admin)
 exports.updateProfile = async (req, res) => {
   try {
     const { username, fullName, email, profileData } = req.body;
@@ -76,9 +70,6 @@ if (username && username !== req.user.username) {
   }
 };
 
-// @desc    Get all pending location requests
-// @route   GET /api/admin/location-requests/pending
-// @access  Private (Admin)
 exports.getPendingLocationRequests = async (req, res) => {
   try {
     const requests = await LocationRequest.find({ status: 'pending' })
@@ -99,9 +90,6 @@ exports.getPendingLocationRequests = async (req, res) => {
   }
 };
 
-// @desc    Get all location requests
-// @route   GET /api/admin/location-requests
-// @access  Private (Admin)
 exports.getAllLocationRequests = async (req, res) => {
   try {
     const requests = await LocationRequest.find()
@@ -122,9 +110,6 @@ exports.getAllLocationRequests = async (req, res) => {
   }
 };
 
-// @desc    Verify location request with SerpAPI
-// @route   GET /api/admin/location-requests/:requestId/verify
-// @access  Private (Admin)
 exports.verifyLocationRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
@@ -167,9 +152,6 @@ exports.verifyLocationRequest = async (req, res) => {
   }
 };
 
-// @desc    Approve location request
-// @route   POST /api/admin/location-requests/:requestId/approve
-// @access  Private (Admin)
 exports.approveLocationRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
@@ -231,9 +213,6 @@ exports.approveLocationRequest = async (req, res) => {
   }
 };
 
-// @desc    Reject location request
-// @route   POST /api/admin/location-requests/:requestId/reject
-// @access  Private (Admin)
 exports.rejectLocationRequest = async (req, res) => {
   try {
     const { requestId } = req.params;
@@ -274,9 +253,6 @@ exports.rejectLocationRequest = async (req, res) => {
   }
 };
 
-// @desc    Remove mechanic location
-// @route   DELETE /api/admin/mechanics/:mechanicId/location
-// @access  Private (Admin)
 exports.removeMechanicLocation = async (req, res) => {
   try {
     const { mechanicId } = req.params;
@@ -306,9 +282,6 @@ exports.removeMechanicLocation = async (req, res) => {
   }
 };
 
-// @desc    Get all mechanics
-// @route   GET /api/admin/mechanics
-// @access  Private (Admin)
 exports.getAllMechanics = async (req, res) => {
   try {
     const mechanics = await User.find({ role: 'mechanic' }).select('-password');
@@ -343,9 +316,6 @@ exports.getAllMechanics = async (req, res) => {
   }
 };
 
-// @desc    Get all users
-// @route   GET /api/admin/users
-// @access  Private (Admin)
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find({ role: 'user' }).select('-password').sort({ createdAt: -1 });
@@ -364,9 +334,6 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// @desc    Delete user account
-// @route   DELETE /api/admin/users/:userId
-// @access  Private (Admin)
 exports.deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -421,9 +388,6 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-// @desc    Delete mechanic account
-// @route   DELETE /api/admin/mechanics/:mechanicId
-// @access  Private (Admin)
 exports.deleteMechanic = async (req, res) => {
   try {
     const { mechanicId } = req.params;
@@ -472,9 +436,6 @@ exports.deleteMechanic = async (req, res) => {
   }
 };
 
-// @desc    Get statistics
-// @route   GET /api/admin/stats
-// @access  Private (Admin)
 exports.getStats = async (req, res) => {
   try {
     const totalMechanics = await User.countDocuments({ role: 'mechanic' });

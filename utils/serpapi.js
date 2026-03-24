@@ -1,11 +1,6 @@
 const axios = require('axios');
 
-/**
- * Search for location using SerpAPI Google Maps API
- * @param {string} query - Search query (address + optional business name)
- * @param {string} apiKey - SerpAPI key
- * @returns {Promise<Object>} Location data from SerpAPI
- */
+
 const searchLocation = async (query, apiKey) => {
   try {
     const response = await axios.get('https://serpapi.com/search', {
@@ -18,7 +13,6 @@ const searchLocation = async (query, apiKey) => {
     });
 
     if (response.data && response.data.local_results && response.data.local_results.length > 0) {
-      // Return the first result
       const result = response.data.local_results[0];
       return {
         title: result.title || '',
@@ -35,7 +29,6 @@ const searchLocation = async (query, apiKey) => {
         data_id: result.data_id || ''
       };
     } else if (response.data && response.data.search_metadata) {
-      // No results found, but search was successful
       return {
         title: query,
         address: query,

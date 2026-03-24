@@ -3,9 +3,6 @@ const Review = require('../models/Review');
 const LocationRequest = require('../models/LocationRequest');
 const MechanicLocation = require('../models/MechanicLocation');
 
-// @desc    Get mechanic profile
-// @route   GET /api/mechanics/profile
-// @access  Private (Mechanic)
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
@@ -28,9 +25,6 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// @desc    Update mechanic profile
-// @route   PUT /api/mechanics/profile
-// @access  Private (Mechanic)
 exports.updateProfile = async (req, res) => {
   try {
     const { username, fullName, email, profileData } = req.body;
@@ -40,7 +34,6 @@ exports.updateProfile = async (req, res) => {
     if (email) updateData.email = email.toLowerCase();
     if (profileData) updateData.profileData = profileData;
 
-    // Handle username change
     if (username && username !== req.user.username) {
       const existingUser = await User.findOne({
         username: username.toLowerCase(),
@@ -77,9 +70,6 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// @desc    Get mechanic's current location
-// @route   GET /api/mechanics/location
-// @access  Private (Mechanic)
 exports.getLocation = async (req, res) => {
   try {
     const location = await MechanicLocation.findOne({ mechanicId: req.user.userId });
@@ -96,9 +86,6 @@ exports.getLocation = async (req, res) => {
   }
 };
 
-// @desc    Submit location update request
-// @route   POST /api/mechanics/location-requests
-// @access  Private (Mechanic)
 exports.createLocationRequest = async (req, res) => {
   try {
     const { businessName, address } = req.body;
@@ -110,7 +97,6 @@ exports.createLocationRequest = async (req, res) => {
       });
     }
 
-    // Check if there's already a pending request
     const pendingRequest = await LocationRequest.findOne({
       mechanicId: req.user.userId,
       status: 'pending'
@@ -146,9 +132,6 @@ exports.createLocationRequest = async (req, res) => {
   }
 };
 
-// @desc    Get mechanic's location requests
-// @route   GET /api/mechanics/location-requests
-// @access  Private (Mechanic)
 exports.getLocationRequests = async (req, res) => {
   try {
     const requests = await LocationRequest.find({ mechanicId: req.user.userId })
@@ -168,9 +151,6 @@ exports.getLocationRequests = async (req, res) => {
   }
 };
 
-// @desc    Get notifications for mechanic
-// @route   GET /api/mechanics/notifications
-// @access  Private (Mechanic)
 exports.getNotifications = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('notifications');
@@ -198,9 +178,6 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
-// @desc    Mark notifications as read
-// @route   POST /api/mechanics/notifications/read
-// @access  Private (Mechanic)
 exports.markNotificationsRead = async (req, res) => {
   try {
     await User.updateOne(
@@ -220,9 +197,6 @@ exports.markNotificationsRead = async (req, res) => {
   }
 };
 
-// @desc    Get reviews for this mechanic
-// @route   GET /api/mechanics/reviews
-// @access  Private (Mechanic)
 exports.getReviews = async (req, res) => {
   try {
     const reviews = await Review.find({ mechanicId: req.user.userId })
