@@ -3,9 +3,6 @@ const Proposal  = require('../models/Proposal');
 const path      = require('path');
 const fs        = require('fs');
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Helper: حفظ الصور محلياً
-// ─────────────────────────────────────────────────────────────────────────────
 const UPLOAD_DIR = path.join(__dirname, '..', 'public', 'uploads', 'breakdowns');
 
 const savePhotosLocally = (files = []) => {
@@ -17,11 +14,6 @@ const savePhotosLocally = (files = []) => {
   }));
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  @desc    نشر منشور عطل جديد
-//  @route   POST /api/users/breakdowns
-//  @access  Private (User)
-// ─────────────────────────────────────────────────────────────────────────────
 exports.createBreakdown = async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -92,18 +84,12 @@ exports.createBreakdown = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  @desc    منشوراتي (المستخدم يشوف عطوله هو)
-//  @route   GET /api/users/my-breakdowns
-//  @access  Private (User)
-// ─────────────────────────────────────────────────────────────────────────────
 exports.getMyBreakdowns = async (req, res) => {
   try {
     const breakdowns = await Breakdown.find({ userId: req.user.userId })
       .sort({ createdAt: -1 })
       .populate('assignedMechanic', 'fullName username');
 
-    // لكل عطل في حالة pending، احسب عدد الاقتراحات
     const withCounts = await Promise.all(
       breakdowns.map(async bd => {
         const obj = bd.toObject();
@@ -124,14 +110,6 @@ exports.getMyBreakdowns = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  @desc    كل الأعطال للميكانيكيين
-//  @route   GET /api/mechanics/all-breakdowns
-//  @access  Private (Mechanic)
-//
-//  ⚠️  الأعطال في حالة inProgress أو resolved لا تظهر للميكانيكيين الآخرين
-//      إلا إذا كان هو نفسه المُعيَّن (assignedMechanic)
-// ─────────────────────────────────────────────────────────────────────────────
 exports.getAllBreakdowns = async (req, res) => {
   try {
     const mechanicId               = req.user.userId;
@@ -140,15 +118,12 @@ exports.getAllBreakdowns = async (req, res) => {
     let filter;
 
     if (status) {
-      // فلتر محدد من الميكانيكي
       if (['inProgress', 'resolved'].includes(status)) {
-        // يشوف فقط اللي هو مُعيَّن عليها
         filter = { status, assignedMechanic: mechanicId };
       } else {
         filter = { status };
       }
     } else {
-      // بدون فلتر: يشوف pending (الكل) + inProgress/resolved (بتاعته فقط)
       filter = {
         $or: [
           { status: 'pending' },
@@ -169,7 +144,6 @@ exports.getAllBreakdowns = async (req, res) => {
       Breakdown.countDocuments(filter),
     ]);
 
-    // لكل عطل pending: هل قدّم هذا الميكانيكي اقتراحاً مسبقاً؟
     const enriched = await Promise.all(
       breakdowns.map(async bd => {
         const obj = bd.toObject();
@@ -202,11 +176,6 @@ exports.getAllBreakdowns = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  @desc    تحديث حالة المنشور (admin / internal use)
-//  @route   PATCH /api/users/breakdowns/:id/status
-//  @access  Private
-// ─────────────────────────────────────────────────────────────────────────────
 exports.updateBreakdownStatus = async (req, res) => {
   try {
     const { status, assignedMechanic } = req.body;
@@ -238,11 +207,6 @@ exports.updateBreakdownStatus = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  @desc    حذف منشور عطل
-//  @route   DELETE /api/users/breakdowns/:id
-//  @access  Private (User)
-// ─────────────────────────────────────────────────────────────────────────────
 exports.deleteBreakdown = async (req, res) => {
   try {
     const breakdown = await Breakdown.findOne({
@@ -259,7 +223,6 @@ exports.deleteBreakdown = async (req, res) => {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     });
 
-    // حذف كل الاقتراحات المرتبطة
     await Proposal.deleteMany({ breakdownId: breakdown._id });
 
     await breakdown.deleteOne();
