@@ -1,33 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-//  أضف هذه الحقول لـ breakdownSchema في Breakdown.js
-//  بعد حقل assignedMechanic مباشرة:
-// ─────────────────────────────────────────────────────────────────────────────
-
-/*
-  // ── تقرير الإصلاح (PDF) ──────────────────────────────────
-  reportPdf: {
-    path:       { type: String, default: null },   // /uploads/reports/filename.pdf
-    filename:   { type: String, default: null },   // الاسم الأصلي
-    uploadedAt: { type: Date,   default: null },
-  },
-
-  reportData: {
-    solutionSummary: { type: String, trim: true, default: '' },
-    spareParts: [
-      {
-        name:     { type: String, trim: true },
-        quantity: { type: Number, default: 1 },
-        price:    { type: Number, default: 0 },
-      }
-    ],
-    finalPrice:  { type: Number, default: null },
-    submittedAt: { type: Date,   default: null },
-  },
-*/
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  الـ Breakdown.js الكامل مع الحقول الجديدة
-// ─────────────────────────────────────────────────────────────────────────────
 const mongoose = require('mongoose');
 
 const breakdownSchema = new mongoose.Schema({
@@ -69,7 +39,6 @@ const breakdownSchema = new mongoose.Schema({
 
   assignedMechanic: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
-  // ── تقرير الإصلاح ─────────────────────────────────────────
   reportPdf: {
     path:       { type: String, default: null },
     filename:   { type: String, default: null },
