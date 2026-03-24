@@ -7,36 +7,28 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
-// تم تعديل البورت الافتراضي إلى 3001 لأن 3000 محجوز للفرونت-إيند
+
 const PORT = process.env.PORT || 3001; 
 
-// ==========================================
-// 1. إعدادات الـ CORS (يجب أن تكون في الأعلى دائماً)
-// ==========================================
+
 app.use(cors({
-  origin: 'http://localhost:3000', // السماح للفرونت-إيند بالوصول
-  credentials: true, // السماح بإرسال الكوكيز أو التوكنز
+  origin: 'http://localhost:3000',
+  credentials: true, 
 }));
 
-// ==========================================
-// 2. إعدادات الحماية والـ Middleware الأخرى
-// ==========================================
-// تم تعديل Helmet ليسمح بالـ Cross-Origin
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Body parser middleware (يفضل وضعه هنا ليكون متاحاً لباقي الطلبات)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Sanitize data against NoSQL injection
 app.use(mongoSanitize());
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, 
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, 
   message: {
     success: false,
     error: 'Too many requests from this IP, please try again later.'
@@ -47,9 +39,7 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
-// ==========================================
-// 3. الاتصال بقاعدة البيانات
-// ==========================================
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mechanic-app';
 
 mongoose.connect(MONGODB_URI)
@@ -59,9 +49,7 @@ mongoose.connect(MONGODB_URI)
     process.exit(1);
   });
 
-// ==========================================
-// 4. المسارات (Routes)
-// ==========================================
+
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const mechanicRoutes = require('./routes/mechanics');
@@ -72,7 +60,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/mechanics', mechanicRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Health check route
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -82,7 +69,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -91,13 +77,10 @@ app.use((req, res) => {
   });
 });
 
-// ==========================================
-// 5. معالجة الأخطاء (Error Handling)
-// ==========================================
+
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
 
-  // Mongoose validation error
   if (err.name === 'ValidationError') {
     const messages = Object.values(err.errors).map(e => e.message);
     return res.status(400).json({
@@ -107,7 +90,6 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Mongoose duplicate key error
   if (err.code === 11000) {
     return res.status(400).json({
       success: false,
@@ -115,7 +97,6 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // JWT errors
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({
       success: false,
@@ -136,10 +117,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ==========================================
-// 6. تشغيل وإغلاق السيرفر
-// ==========================================
-// Graceful shutdown
+
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Closing HTTP server...');
   server.close(() => {
@@ -151,7 +129,6 @@ process.on('SIGTERM', () => {
   });
 });
 
-// Start server
 const server = app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════╗
