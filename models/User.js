@@ -47,7 +47,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-/// 🔐 Hash password before saving (FIXED)
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
 
@@ -55,7 +54,6 @@ userSchema.pre('save', async function () {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-/// 🔑 Compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
