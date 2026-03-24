@@ -6,9 +6,7 @@ const { protect }       = require('../middleware/auth');
 const userController    = require('../controllers/userController');
 const proposalController = require('../controllers/proposalController');
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Multer — حفظ صور العطل محلياً
-// ─────────────────────────────────────────────────────────────────────────────
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = path.join(__dirname, '..', 'public', 'uploads', 'breakdowns');
@@ -45,21 +43,17 @@ const handleUploadError = (err, req, res, next) => {
   next();
 };
 
-// All routes require authentication + 'user' role
 router.use(protect('user'));
 
-// ── Profile ───────────────────────────────────────────────────────────────────
 router.get('/profile',  userController.getProfile);
 router.put('/profile',  userController.updateProfile);
 
-// ── Mechanics & Reviews ───────────────────────────────────────────────────────
 router.get('/mechanics',                           userController.getMechanics);
 router.get('/mechanics/:mechanicId/reviews',       userController.getMechanicReviews);
 router.post('/reviews',                            userController.createReview);
 router.get('/my-reviews',                          userController.getMyReviews);
 
-// ── Breakdowns ────────────────────────────────────────────────────────────────
-// POST   /api/users/breakdowns              — نشر عطل جديد
+
 router.post(
   '/breakdowns',
   upload.array('photos', 5),
@@ -67,39 +61,30 @@ router.post(
   userController.createBreakdown
 );
 
-// GET    /api/users/my-breakdowns           — عطولي + عدد الاقتراحات
 router.get('/my-breakdowns', userController.getMyBreakdowns);
 
-// PATCH  /api/users/breakdowns/:id/status   — تحديث الحالة يدوياً
 router.patch('/breakdowns/:id/status', userController.updateBreakdownStatus);
 
-// DELETE /api/users/breakdowns/:id          — حذف عطل
 router.delete('/breakdowns/:id', userController.deleteBreakdown);
 
-// ── Proposals (user side) ────────────────────────────────────────────────────
-// GET    /api/users/breakdowns/:breakdownId/proposals
-//        المستخدم يشوف كل الاقتراحات على عطله
+
 router.get(
   '/breakdowns/:breakdownId/proposals',
   proposalController.getBreakdownProposals
 );
 
-// POST   /api/users/breakdowns/:breakdownId/proposals/:proposalId/accept
-//        المستخدم يوافق على اقتراح → يُعيَّن الميكانيكي تلقائياً
+
 router.post(
   '/breakdowns/:breakdownId/proposals/:proposalId/accept',
   proposalController.acceptProposal
 );
 
-// POST   /api/users/breakdowns/:breakdownId/proposals/:proposalId/reject
-//        المستخدم يرفض اقتراح معين
 router.post(
   '/breakdowns/:breakdownId/proposals/:proposalId/reject',
   proposalController.rejectProposal
 );
 
-// POST   /api/users/breakdowns/:breakdownId/complete
-//        المستخدم يعلن اكتمال الخدمة → status: 'resolved'
+
 router.post(
   '/breakdowns/:breakdownId/complete',
   proposalController.completeBreakdown

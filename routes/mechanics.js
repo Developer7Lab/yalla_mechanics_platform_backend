@@ -1,6 +1,4 @@
-// ═══════════════════════════════════════════════════
-//  mechanicRoutes.js — أضف هذا لملف الـ routes
-// ═══════════════════════════════════════════════════
+
 const express = require('express');
 const router  = express.Router();
 const multer  = require('multer');
@@ -14,31 +12,24 @@ const reportController    = require('../controllers/Reportcontroller');
 
 router.use(protect('mechanic'));
 
-// Profile
 router.get('/profile',            mechanicController.getProfile);
 router.put('/profile',            mechanicController.updateProfile);
 
-// Location
 router.get('/location',           mechanicController.getLocation);
 router.post('/location-requests', mechanicController.createLocationRequest);
 router.get('/location-requests',  mechanicController.getLocationRequests);
 
-// Notifications
 router.get('/notifications',       mechanicController.getNotifications);
 router.post('/notifications/read', mechanicController.markNotificationsRead);
 
-// Reviews
 router.get('/reviews', mechanicController.getReviews);
 
-// Breakdowns
 router.get('/all-breakdowns', breakdownController.getAllBreakdowns);
 
-// Proposals
 router.post('/breakdowns/:breakdownId/proposals', proposalController.submitProposal);
 router.get('/my-proposals',                       proposalController.getMyProposals);
 router.delete('/proposals/:proposalId',           proposalController.withdrawProposal);
 
-// ── PDF Report Upload ──────────────────────────────────────────────────────
 const REPORTS_DIR = path.join(__dirname, '..', 'public', 'uploads', 'reports');
 
 const reportStorage = multer.diskStorage({
@@ -60,7 +51,7 @@ const pdfFilter = (req, file, cb) => {
 const uploadPdf = multer({
   storage: reportStorage,
   fileFilter: pdfFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 const handlePdfError = (err, req, res, next) => {
@@ -72,7 +63,6 @@ const handlePdfError = (err, req, res, next) => {
   next();
 };
 
-// POST /api/mechanics/breakdowns/:breakdownId/report
 router.post(
   '/breakdowns/:breakdownId/report',
   uploadPdf.single('reportPdf'),
@@ -82,11 +72,3 @@ router.post(
 
 module.exports = router;
 
-
-// ═══════════════════════════════════════════════════
-//  userRoutes.js — أضف هذا السطر
-// ═══════════════════════════════════════════════════
-
-// GET /api/users/breakdowns/:breakdownId/report
-// router.get('/breakdowns/:breakdownId/report', reportController.getReport);
-// (استورد reportController في أعلى الملف)
