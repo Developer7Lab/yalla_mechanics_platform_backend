@@ -7,14 +7,13 @@ const fs      = require('fs');
 const { protect }         = require('../middleware/auth');
 const mechanicController  = require('../controllers/mechanicController');
 const breakdownController = require('../controllers/breakdownController');
-const proposalController  = require('../controllers/proposalcontroller');
-const reportController    = require('../controllers/reportcontroller');
+const proposalController  = require('../controllers/proposalController');
+const reportController    = require('../controllers/reportController');
 
 router.use(protect('mechanic'));
 
 router.get('/profile',            mechanicController.getProfile);
 router.put('/profile',            mechanicController.updateProfile);
-
 router.get('/location',           mechanicController.getLocation);
 router.post('/location-requests', mechanicController.createLocationRequest);
 router.get('/location-requests',  mechanicController.getLocationRequests);
