@@ -14,7 +14,6 @@ router.use(protect('mechanic'));
 
 router.get('/profile',            mechanicController.getProfile);
 router.put('/profile',            mechanicController.updateProfile);
-
 router.get('/location',           mechanicController.getLocation);
 router.post('/location-requests', mechanicController.createLocationRequest);
 router.get('/location-requests',  mechanicController.getLocationRequests);
