@@ -10,6 +10,7 @@ const notifyUser = async (userId, message, type = 'info') => {
 };
 
 exports.submitProposal = async (req, res) => {
+  
   try {
     const { breakdownId } = req.params;
     const mechanicId = req.user.userId;
