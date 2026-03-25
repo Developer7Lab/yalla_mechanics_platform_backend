@@ -7,7 +7,7 @@ const fs      = require('fs');
 const { protect }         = require('../middleware/auth');
 const mechanicController  = require('../controllers/mechanicController');
 const breakdownController = require('../controllers/breakdownController');
-const proposalController  = require('../controllers/proposalcontroller');
+const proposalController  = require('../controllers/proposalController');
 const reportController    = require('../controllers/reportcontroller');
 
 router.use(protect('mechanic'));
