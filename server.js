@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3001;
 
 
 app.use(cors({
-  origin: 'https://yalla-mechanics.vercel.app/',
+  origin: 'https://yalla-mechanics.vercel.app',
   credentials: true, 
 }));
 
