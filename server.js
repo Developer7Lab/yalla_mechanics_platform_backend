@@ -12,10 +12,12 @@ const PORT = process.env.PORT || 3001;
 
 
 app.use(cors({
-  origin: 'https://yalla-mechanics.vercel.app',
-  credentials: true, 
+  origin: [
+    'https://yalla-mechanics.vercel.app',
+    'http://localhost:3000'
+  ],
+  credentials: true,
 }));
-
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
