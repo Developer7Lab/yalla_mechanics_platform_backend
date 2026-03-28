@@ -28,18 +28,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(mongoSanitize());
 
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, 
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, 
-  message: {
-    success: false,
-    error: 'Too many requests from this IP, please try again later.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
-app.use('/api/', limiter);
+app.use('/api/');
 
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mechanic-app';
