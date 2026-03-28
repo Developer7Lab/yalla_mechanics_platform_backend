@@ -30,6 +30,7 @@ app.use(mongoSanitize());
 
 
 
+app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mechanic-app';
 
