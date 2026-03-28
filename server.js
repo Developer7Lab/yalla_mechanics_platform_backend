@@ -30,9 +30,11 @@ app.use(mongoSanitize());
 
 
 
-app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/public',  express.static(path.join(__dirname, 'public')));
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mechanic-app';
+
 
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('✓ Connected to MongoDB'))
