@@ -2,6 +2,9 @@ const User = require('../models/User');
 const Review = require('../models/Review');
 const LocationRequest = require('../models/LocationRequest');
 const MechanicLocation = require('../models/MechanicLocation');
+const Breakdown = require('../models/Breakdown');
+
+// ========== Profile Management ==========
 
 exports.getProfile = async (req, res) => {
   try {
@@ -69,6 +72,8 @@ exports.updateProfile = async (req, res) => {
     });
   }
 };
+
+// ========== Location Management ==========
 
 exports.getLocation = async (req, res) => {
   try {
@@ -151,6 +156,8 @@ exports.getLocationRequests = async (req, res) => {
   }
 };
 
+// ========== Notifications ==========
+
 exports.getNotifications = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('notifications');
@@ -197,6 +204,8 @@ exports.markNotificationsRead = async (req, res) => {
   }
 };
 
+// ========== Reviews ==========
+
 exports.getReviews = async (req, res) => {
   try {
     const reviews = await Review.find({ mechanicId: req.user.userId })
@@ -218,6 +227,88 @@ exports.getReviews = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching reviews:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error'
+    });
+  }
+};
+
+// ========== ✅ Submit Report (JSON-based) ==========
+
+exports.submitReport = async (req, res) => {
+  try {
+    const { solutionSummary, finalPrice, currency, spareParts, mechanicNotes } = req.body;
+
+    // Validation
+    if (!solutionSummary || solutionSummary.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Solution summary is required'
+      });
+    }
+
+    if (!finalPrice || finalPrice <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Final price must be greater than 0'
+      });
+    }
+
+    const breakdown = await Breakdown.findById(req.params.breakdownId);
+    
+    if (!breakdown) {
+      return res.status(404).json({
+        success: false,
+        error: 'Breakdown not found'
+      });
+    }
+
+    // تحقق إن الميكانيكي هو المكلّف بالطلب
+    if (!breakdown.assignedMechanic || breakdown.assignedMechanic.toString() !== req.user.userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'You are not assigned to this breakdown'
+      });
+    }
+
+    if (breakdown.status !== 'inProgress') {
+      return res.status(400).json({
+        success: false,
+        error: 'Breakdown is not in progress'
+      });
+    }
+
+    // ✅ حفظ بيانات التقرير كـ JSON
+    breakdown.reportData = {
+      solutionSummary: solutionSummary.trim(),
+      finalPrice: Number(finalPrice),
+      currency: currency || 'JOD',
+      spareParts: spareParts || [],
+      mechanicNotes: mechanicNotes || '',
+      submittedAt: new Date()
+    };
+
+    breakdown.status = 'resolved';
+    await breakdown.save();
+
+    // إشعار للمستخدم
+    const user = await User.findById(breakdown.userId);
+    if (user) {
+      user.notifications.push({
+        message: `تم إرسال تقرير الإصلاح لطلبك: ${breakdown.title}`,
+        type: 'success'
+      });
+      await user.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Report submitted successfully',
+      data: breakdown
+    });
+  } catch (error) {
+    console.error('Error submitting report:', error);
     res.status(500).json({
       success: false,
       error: 'Server error'
