@@ -68,6 +68,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Welcome to Mechanic App API 🚗🔧',
+    version: '1.0.0',
+    docs: '/api/health',
+    timestamp: new Date().toISOString()
+  });
+});
 app.use((req, res) => {
   res.status(404).json({
     success: false,
