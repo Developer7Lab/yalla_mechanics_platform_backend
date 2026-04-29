@@ -71,7 +71,19 @@ exports.getMechanics = async (req, res) => {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 };
-
+exports.getMechanicDetails = async (req, res) => {
+  try {
+    const mechanicId = req.params.mechanicId;
+    const mechanic = await User.findOne({ _id: mechanicId, role: 'mechanic' }).select('-password');
+    if (!mechanic) {
+      return res.status(404).json({ success: false, error: 'Mechanic not found' });
+    }
+    res.json({ success: true, data: mechanic });
+  } catch (error) {
+    console.error('Error fetching mechanic details:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
 exports.getMechanicReviews = async (req, res) => {
   try {
     const reviews = await Review.find({ mechanicId: req.params.mechanicId })

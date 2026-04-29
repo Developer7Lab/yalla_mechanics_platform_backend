@@ -49,6 +49,7 @@ router.get('/profile',  userController.getProfile);
 router.put('/profile',  userController.updateProfile);
 
 router.get('/mechanics',                           userController.getMechanics);
+router.get('/mechanics/:mechanicId',               userController.getMechanicDetails);
 router.get('/mechanics/:mechanicId/reviews',       userController.getMechanicReviews);
 router.post('/reviews',                            userController.createReview);
 router.get('/my-reviews',                          userController.getMyReviews);
